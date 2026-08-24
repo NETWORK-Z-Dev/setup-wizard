@@ -19,6 +19,9 @@
     width: fit-content;
     gap: 1rem;
 }
+.step:hover{
+    cursor: pointer;
+}
 
 .step .icon{
     display: flex;
@@ -39,8 +42,8 @@
     color: white;
 }
 .step.done .icon{
-    background-color: rgb(60 179 113 / 0.2);
-    color: mediumseagreen;
+    background-color: rgb(60 179 113 / 0.2) !important;
+    color: mediumseagreen !important;
     border: 2px solid mediumseagreen;
 }
 .step.done .title{

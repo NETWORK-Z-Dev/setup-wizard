@@ -62,7 +62,7 @@ async function setStepProgressElement(){
         `
 
         stepElement.addEventListener("click", async () => {
-            await setFieldsElement(step);
+            await renderStep(i);
         })
 
         stepContainer.insertAdjacentElement("beforeend", stepElement);
