@@ -1,0 +1,29 @@
+.fields-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field label {
+    color: var(--gray-mid);
+}
+
+.field input{
+    padding: 0.5rem;
+    border: 1.5px solid var(--gray);
+    border-radius: 6px;
+    outline: none;
+    transition: all 200ms ease-in-out;
+}
+.field:hover input{
+    border: 1.5px solid var(--gray-brighter);
+}
+
+.field:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}

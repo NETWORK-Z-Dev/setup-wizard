@@ -1,0 +1,224 @@
+let testedSteps = new Map();
+
+function getCurrentStep(){
+    return Number(localStorage.getItem("wizard_currentStep")) ?? 0;
+}
+
+function setCurrentStep(number){
+    if(isNaN(number)) throw new Error("Invalid step number");
+    return localStorage.setItem("wizard_currentStep", String(number));
+}
+
+async function getSteps(){
+    let stepsRes = await fetch(`${window.location.href}steps`)
+    if(stepsRes.status !== 200) {
+        console.error(stepsRes.status, stepsRes.statusText)
+        return null;
+    }
+
+    return (await stepsRes.json())?.steps ?? null;
+}
+
+async function setStepProgressElement(){
+    let steps = await getSteps();
+    window.steps = steps;
+
+    // check if there are any steps
+    let hasSteps = Object.keys(steps ?? {})?.length > 0;
+    if(!hasSteps) throw new Error("No steps found for progress renderer");
+
+    // reset panel stuff
+    setModalHeaderHTML();
+    getProgressElement().innerHTML = `<span class="error"></span>`;
+    let stepContainer = document.createElement("div");
+    stepContainer.className = "step-container";
+
+    for(let i = 0; i < Object.keys(steps).length; i++){
+        let stepKey = Object.keys(steps)[i];
+        let step = steps[stepKey]
+
+        let isLastStep = i === (Object.keys(steps).length - 1);
+        let stepElement = document.createElement("div");
+
+        stepElement.className = "step"
+        stepElement.setAttribute("data-step-count", String(i));
+        stepElement.innerHTML = `
+            <span class="icon">${i+1}</span>
+            <span class="title">${step.title}</span>
+        `
+
+        stepElement.addEventListener("click", async () => {
+            await setFieldsElement(step);
+        })
+
+        stepContainer.insertAdjacentElement("beforeend", stepElement);
+        if(!isLastStep){
+            let stepDivider = document.createElement("div");
+            stepDivider.className = "step-divider";
+            stepContainer.insertAdjacentElement("beforeend", stepDivider);
+        }
+    }
+
+    getProgressElement().insertAdjacentElement("beforeend", stepContainer);
+    await renderStep(getCurrentStep());
+}
+
+function getStepKeyFromCount(stepCount){
+    let steps = window.steps;
+    return Object.keys(steps)[stepCount];
+}
+
+async function renderStep(stepCount = null){
+    if(stepCount === null) throw new Error("step count wasnt provided");
+
+    await setFieldsElement(steps[getStepKeyFromCount(stepCount)])
+    setModalFooterHTML(stepCount);
+    markProgressStep(stepCount);
+    setCurrentStep(stepCount);
+}
+
+function markProgressStep(stepCount){
+    let progressSteps = getProgressElement().querySelectorAll(".step");
+    let targetProgressStep = getProgressElement().querySelector(`.step[data-step-count="${stepCount}"]`);
+
+    if(progressSteps.length > 0){
+        progressSteps.forEach(step => {
+            let stepCount = step.getAttribute("data-step-count");
+            if(step.classList.contains("active")) step.classList.remove("active");
+
+            if(testedSteps.has(getStepKeyFromCount(stepCount))){
+                step.classList.add("done");
+                setProgressStepIconContent(stepCount, Icon.display("check"))
+            }
+
+        })
+    }
+
+    if(!targetProgressStep) throw new Error("Target step not found in progress element!");
+    targetProgressStep.classList.add("active");
+}
+
+async function setFieldsElement(step){
+    if(!step) throw new Error("No step found");
+    if(!step?.fields) throw new Error("No step fields found");
+    if(!Array.isArray(step?.fields)) throw new Error("Step fields is not an array");
+
+    let stepSubtitle = step?.subtitle ? `<h1 class="subtitle">${step?.subtitle}</h1><hr>` : "";
+    getContentElement().innerHTML = `${stepSubtitle}`;
+
+    let fieldsContainer = document.createElement("div");
+    fieldsContainer.className = "fields-container";
+
+    for(let field of step.fields){
+        let fieldElement = document.createElement("div");
+        fieldElement.className = "field";
+
+        let isSensitive =
+            field?.isSensitive === true ||
+            field.id.toLowerCase().includes("password") === true ||
+            field.text.toLowerCase().includes("password") === true ||
+            field.text.toLowerCase().includes("secret") === true ||
+            field.id.toLowerCase().includes("secret") === true;
+
+        let inputType = field?.type ?? "text"
+
+        fieldElement.innerHTML = `
+            <label>${field.text}</label>
+            <input 
+            type="${isSensitive ? "password" : inputType ? inputType : "text"}" 
+            id="${field.id}" 
+            placeholder="${field?.placeholder ?? ""}" 
+            value="${field?.value ?? ""}">
+        `
+
+        fieldsContainer.insertAdjacentElement("beforeend", fieldElement);
+    }
+
+    getContentElement().insertAdjacentElement("beforeend", fieldsContainer);
+}
+
+function getFieldsValues(){
+    let fieldInputs = getContentElement().querySelectorAll(".fields-container input");
+    let keyValues = {};
+    if(fieldInputs.length > 0){
+        fieldInputs.forEach(field => {
+            keyValues[field.id] = field.value;
+        })
+    }
+
+    return keyValues;
+}
+
+async function setModalHeaderHTML(){
+    getHeaderElement().innerHTML = `
+        <h1>Setup Wizard</h1>
+        <span>DCTS - Decentralized Open Source Communication Platform</span>
+    `
+}
+
+function setModalFooterHTML(stepCount){
+    let nextButtonText = `<button class="next" onclick="renderNextStep();">Next</button>`;
+
+    if(!testedSteps.has(getStepKeyFromCount(stepCount))){
+        nextButtonText = `<button class="next" onclick="testStep('${stepCount}');">Test</button>`;
+    }
+
+    getFooterElement().innerHTML = `
+        <div class="actions">
+            <button class="previous" onclick="renderPreviousStep();">Previous</button>
+            ${nextButtonText}
+        </div>
+    `
+}
+
+async function testStep(stepCount){
+    let stepId = getStepKeyFromCount(stepCount);
+
+    let testRes = await fetch(`${window.location.href}step/${stepId}/test`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            ...getFieldsValues()
+        })
+    });
+
+    if(testRes.status !== 200){
+        console.error(testRes.statusText, testRes.status);
+    }
+
+    let jsonData = await testRes.json();
+    console.log(jsonData);
+    if(jsonData?.error){
+        setModalError(jsonData?.error);
+    }
+    else{
+        testedSteps.set(stepId, true);
+        setModalFooterHTML(stepCount);
+    }
+}
+
+async function renderNextStep(){
+    let steps = window.steps;
+    let stepCount = Object.keys(steps).length - 1 ?? 0;
+    let nextStepCount = Number(await getCurrentStep()) + 1;
+
+    if(nextStepCount <= stepCount){
+        await renderStep(nextStepCount);
+    }
+}
+
+async function renderPreviousStep(){
+    let steps = window.steps;
+    let stepCount = Object.keys(steps).length - 1 ?? 0;
+    let nextStepCount = Number(await getCurrentStep()) - 1;
+
+    if(nextStepCount >=  0){
+        await renderStep(nextStepCount);
+    }
+}
+
+function finishSetup(){
+
+}
