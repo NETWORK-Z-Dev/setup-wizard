@@ -84,7 +84,10 @@ export default class SetupWizard {
             let step = this.steps.get(stepId);
             if(step?.test && typeof step?.test === "function"){
                 let stepTestError = await step.test(data)
-                if(stepTestError) return res.status(200).json({ error: stepTestError?.error })
+
+                if(stepTestError?.error) {
+                    return res.status(200).json({ error: stepTestError.error });
+                }
             }
 
             res.status(200).json({ error: null});

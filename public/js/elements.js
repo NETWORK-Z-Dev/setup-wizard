@@ -18,14 +18,16 @@ function getFooterElement(){
     return getModalElement().querySelector(".footer")
 }
 
-function setModalError(text = null){
+function setModalMessage(text = null, type = "info"){
+    let modalElement = getProgressElement().querySelector("span.message");
     if(text){
-        getProgressElement().querySelector("span.error").style.display = "flex";
-        getProgressElement().querySelector("span.error").innerHTML = text;
+        modalElement.style.display = "flex";
+        modalElement.innerHTML = text;
+        modalElement.classList.add(type);
     }
     else{
-        getProgressElement().querySelector("span.error").style.display = "none";
-        getProgressElement().querySelector("span.error").innerHTML = "";
+        modalElement.style.display = "none";
+        modalElement.innerHTML = "";
     }
 }
 

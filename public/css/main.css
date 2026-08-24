@@ -43,13 +43,32 @@ html, body {
 .layout .modal .progress .error.visible{
     display: flex;
 }
-.layout .modal .progress .error{
+.layout .modal .progress .message{
     display: none;
+    padding: 1rem;
+}
+.layout .modal .progress .message.error{
     color: indianred;
     background-color: rgb(205 92 92 / 0.2);
     border-top: 1.5px solid indianred;
-    padding: 1rem;
 }
+.layout .modal .progress .message.info{
+    color: cornflowerblue;
+    background-color: rgb(100 149 237 / 0.2);
+    border-top: 1.5px solid cornflowerblue;
+}
+.layout .modal .progress .message.success{
+    color: mediumseagreen;
+    background-color: rgb(60 179 113 / 0.2);
+    border-top: 1.5px solid mediumseagreen;
+}
+.layout .modal .progress .message.warning{
+    color: darkorange;
+    background-color: rgb(255 140 0 / 0.2);
+    border-top: 1.5px solid darkorange;
+}
+
+
 .layout .modal .progress{
     display: flex;
     flex-direction: column;

@@ -1,7 +1,21 @@
 let testedSteps = new Map();
 
+document.addEventListener("DOMContentLoaded", async () => {
+    testedSteps = loadTestedSteps();
+}, { once: true})
+
 function getCurrentStep(){
     return Number(localStorage.getItem("wizard_currentStep")) ?? 0;
+}
+
+function saveTestedSteps(){
+    localStorage.setItem("wizard_testedSteps", JSON.stringify([...testedSteps]));
+}
+
+function loadTestedSteps(){
+    let trustedSteps = localStorage.getItem("wizard_testedSteps");
+    if(trustedSteps) return new Map(JSON.parse(trustedSteps));
+    return new Map();
 }
 
 function setCurrentStep(number){
@@ -29,7 +43,7 @@ async function setStepProgressElement(){
 
     // reset panel stuff
     setModalHeaderHTML();
-    getProgressElement().innerHTML = `<span class="error"></span>`;
+    getProgressElement().innerHTML = `<span class="message"></span>`;
     let stepContainer = document.createElement("div");
     stepContainer.className = "step-container";
 
@@ -189,17 +203,19 @@ async function testStep(stepCount){
     }
 
     let jsonData = await testRes.json();
-    console.log(jsonData);
     if(jsonData?.error){
-        setModalError(jsonData?.error);
+        setModalMessage(jsonData?.error, "error");
     }
     else{
+        setModalMessage("Successful test!", "success")
         testedSteps.set(stepId, true);
+        saveTestedSteps();
         setModalFooterHTML(stepCount);
     }
 }
 
 async function renderNextStep(){
+    setModalMessage();
     let steps = window.steps;
     let stepCount = Object.keys(steps).length - 1 ?? 0;
     let nextStepCount = Number(await getCurrentStep()) + 1;

@@ -39,12 +39,12 @@
     color: white;
 }
 .step.done .icon{
-    background-color: rgba(0, 128, 0, 0.2);
-    color: green;
-    border: 2px solid green;
+    background-color: rgb(60 179 113 / 0.2);
+    color: mediumseagreen;
+    border: 2px solid mediumseagreen;
 }
 .step.done .title{
-    color: green;
+    color: mediumseagreen;
 }
 
 
