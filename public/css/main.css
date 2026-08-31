@@ -34,8 +34,9 @@ html, body {
     min-height: 50vh;
 
     max-height: 90vh;
+    max-width: 90vw;
 
-    box-shadow: 1px 1px 4rem 1rem rgba(0, 0, 0, 0.1);
+    box-shadow: 6px 6px 10px 1px rgba(0, 0, 0, 0.1);
     border-radius: 1rem;
     border: 2px solid rgba(0,0,0, 0.075);
 }
@@ -91,13 +92,37 @@ html, body {
     padding: 2rem;
     overflow: auto;
 }
-.layout .modal .content .subtitle{
+
+
+.layout .modal .content .content-headings{
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 3rem;
+}
+
+.layout .modal .content .subheading h1{
+    font-size: 12px !important;
+}
+.layout .modal .content .subheading hr{
+    margin-bottom: 1rem;
+}
+
+.layout .modal .content h1,
+.layout .modal .content h2,
+.layout .modal .content p{
+    margin: 0;
+}
+.layout .modal .content h1.subtitle {
     color: var(--gray-brighter);
-    font-size: 16px;
-    margin-top: 0;
-    margin-bottom: -0.75rem;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+.layout .modal .content p{
+    font-size: 14px;
+    color: var(--gray-mid);
 }
 .layout .modal .content hr {
     border: 1.25px solid var(--gray);
-    margin: 1rem auto 2rem auto;
+    width: 100%;
 }

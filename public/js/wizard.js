@@ -2,44 +2,14 @@ let testedSteps = new Map();
 
 document.addEventListener("DOMContentLoaded", async () => {
     testedSteps = loadTestedSteps();
-}, { once: true})
+}, {once: true})
 
-function getCurrentStep(){
-    return Number(localStorage.getItem("wizard_currentStep")) ?? 0;
-}
-
-function saveTestedSteps(){
-    localStorage.setItem("wizard_testedSteps", JSON.stringify([...testedSteps]));
-}
-
-function loadTestedSteps(){
-    let trustedSteps = localStorage.getItem("wizard_testedSteps");
-    if(trustedSteps) return new Map(JSON.parse(trustedSteps));
-    return new Map();
-}
-
-function setCurrentStep(number){
-    if(isNaN(number)) throw new Error("Invalid step number");
-    return localStorage.setItem("wizard_currentStep", String(number));
-}
-
-async function getSteps(){
-    let stepsRes = await fetch(`${window.location.href}steps`)
-    if(stepsRes.status !== 200) {
-        console.error(stepsRes.status, stepsRes.statusText)
-        return null;
-    }
-
-    return (await stepsRes.json())?.steps ?? null;
-}
-
-async function setStepProgressElement(){
-    let steps = await getSteps();
-    window.steps = steps;
+async function setStepProgressElement() {
+    let steps = await getSteps()
 
     // check if there are any steps
     let hasSteps = Object.keys(steps ?? {})?.length > 0;
-    if(!hasSteps) throw new Error("No steps found for progress renderer");
+    if (!hasSteps) throw new Error("No steps found for progress renderer");
 
     // reset panel stuff
     setModalHeaderHTML();
@@ -47,7 +17,7 @@ async function setStepProgressElement(){
     let stepContainer = document.createElement("div");
     stepContainer.className = "step-container";
 
-    for(let i = 0; i < Object.keys(steps).length; i++){
+    for (let i = 0; i < Object.keys(steps).length; i++) {
         let stepKey = Object.keys(steps)[i];
         let step = steps[stepKey]
 
@@ -57,7 +27,7 @@ async function setStepProgressElement(){
         stepElement.className = "step"
         stepElement.setAttribute("data-step-count", String(i));
         stepElement.innerHTML = `
-            <span class="icon">${i+1}</span>
+            <span class="icon">${i + 1}</span>
             <span class="title">${step.title}</span>
         `
 
@@ -66,7 +36,7 @@ async function setStepProgressElement(){
         })
 
         stepContainer.insertAdjacentElement("beforeend", stepElement);
-        if(!isLastStep){
+        if (!isLastStep) {
             let stepDivider = document.createElement("div");
             stepDivider.className = "step-divider";
             stepContainer.insertAdjacentElement("beforeend", stepDivider);
@@ -74,56 +44,87 @@ async function setStepProgressElement(){
     }
 
     getProgressElement().insertAdjacentElement("beforeend", stepContainer);
+
     await renderStep(getCurrentStep());
 }
 
-function getStepKeyFromCount(stepCount){
+function getStepKeyFromCount(stepCount) {
     let steps = window.steps;
     return Object.keys(steps)[stepCount];
 }
 
-async function renderStep(stepCount = null){
-    if(stepCount === null) throw new Error("step count wasnt provided");
+async function renderStep(stepCount = null) {
+    if (stepCount === null) throw new Error("step count wasnt provided");
 
+    setCurrentStep(stepCount);
     await setFieldsElement(steps[getStepKeyFromCount(stepCount)])
+
+    // to ether render welcome or not
+    if (window.steps?.["welcome"] && stepCount === 0) {
+        getWelcomeSteps();
+    }
+
     setModalFooterHTML(stepCount);
     markProgressStep(stepCount);
-    setCurrentStep(stepCount);
 }
 
-function markProgressStep(stepCount){
+function markProgressStep(stepCount) {
     let progressSteps = getProgressElement().querySelectorAll(".step");
     let targetProgressStep = getProgressElement().querySelector(`.step[data-step-count="${stepCount}"]`);
 
-    if(progressSteps.length > 0){
+    if (progressSteps.length > 0) {
         progressSteps.forEach(step => {
             let stepCount = step.getAttribute("data-step-count");
-            if(step.classList.contains("active")) step.classList.remove("active");
+            if (step.classList.contains("active")) step.classList.remove("active");
 
-            if(testedSteps.has(getStepKeyFromCount(stepCount))){
+            let stepKey = getStepKeyFromCount(stepCount);
+            if (testedSteps.has(stepKey) || (stepKey === "welcome" && Number(stepCount) < getCurrentStep()) ) {
                 step.classList.add("done");
                 setProgressStepIconContent(stepCount, Icon.display("check"))
             }
-
         })
     }
 
-    if(!targetProgressStep) throw new Error("Target step not found in progress element!");
+    if (!targetProgressStep) throw new Error("Target step not found in progress element!");
     targetProgressStep.classList.add("active");
 }
 
-async function setFieldsElement(step){
-    if(!step) throw new Error("No step found");
-    if(!step?.fields) throw new Error("No step fields found");
-    if(!Array.isArray(step?.fields)) throw new Error("Step fields is not an array");
+function getSubHeadingHTML(text) {
+    if (!text) return "";
 
-    let stepSubtitle = step?.subtitle ? `<h1 class="subtitle">${step?.subtitle}</h1><hr>` : "";
-    getContentElement().innerHTML = `${stepSubtitle}`;
+    return `
+        <div class="subheading">
+            <h1 class="subtitle">${text}</h1>
+            <hr>
+        </div>
+    `
+}
+
+function getStepHeadings(title, subtitle, description) {
+    return `
+        <div class="content-headings">
+            <h1 class="subtitle">Step ${getCurrentStep() + 1}</h1>
+            <h2>${title ?? ""}</h2>
+            <p>${description ?? ""}</p>
+        </div>
+
+        ${getSubHeadingHTML(subtitle ?? "")}
+    `
+}
+
+async function setFieldsElement(step) {
+    if (!step) throw new Error("No step found");
+    if (!step?.fields) throw new Error("No step fields found");
+    if (!Array.isArray(step?.fields)) throw new Error("Step fields is not an array");
+
+    let stepHeadings = step?.title ? getStepHeadings(step.title, step.subtitle, step.description) : "";
+
+    getContentElement().innerHTML = `${stepHeadings}`;
 
     let fieldsContainer = document.createElement("div");
     fieldsContainer.className = "fields-container";
 
-    for(let field of step.fields){
+    for (let field of step.fields) {
         let fieldElement = document.createElement("div");
         fieldElement.className = "field";
 
@@ -151,90 +152,230 @@ async function setFieldsElement(step){
     getContentElement().insertAdjacentElement("beforeend", fieldsContainer);
 }
 
-function getFieldsValues(){
+function getFieldsValues() {
     let fieldInputs = getContentElement().querySelectorAll(".fields-container input");
     let keyValues = {};
-    if(fieldInputs.length > 0){
+    if (fieldInputs.length > 0) {
         fieldInputs.forEach(field => {
-            keyValues[field.id] = field.value;
+            if (field?.value) keyValues[field.id] = field.value ?? null;
         })
     }
 
     return keyValues;
 }
 
-async function setModalHeaderHTML(){
+async function setModalHeaderHTML() {
     getHeaderElement().innerHTML = `
-        <h1>Setup Wizard</h1>
-        <span>DCTS - Decentralized Open Source Communication Platform</span>
+        <h1>{{setup.title}}</h1>
+        <span>{{setup.subtitle}}</span>
     `
 }
 
-function setModalFooterHTML(stepCount){
+function setModalFooterHTML(stepCount) {
     let nextButtonText = `<button class="next" onclick="renderNextStep();">Next</button>`;
+    let previousButton = `<button class="previous" onclick="renderPreviousStep();">Previous</button>`
 
-    if(!testedSteps.has(getStepKeyFromCount(stepCount))){
+    let stepKey = getStepKeyFromCount(stepCount);
+    let wasTested = testedSteps.has(stepKey);
+    let isPreviousPossible = (stepCount) > 0;
+    let isLastStep = stepCount === Object.keys(window.steps).length -1;
+
+    if (!wasTested && stepKey !== "welcome") {
         nextButtonText = `<button class="next" onclick="testStep('${stepCount}');">Test</button>`;
     }
 
+    if (!isPreviousPossible) {
+        previousButton = ""
+    }
+
+    if(isLastStep && wasTested){
+        nextButtonText = `<button class="next" onclick="finishSetup();">Finish</button>`;
+    }
+
     getFooterElement().innerHTML = `
-        <div class="actions">
-            <button class="previous" onclick="renderPreviousStep();">Previous</button>
-            ${nextButtonText}
-        </div>
-    `
+            <div class="actions">
+                ${previousButton}
+                ${nextButtonText}
+            </div>
+        `
 }
 
-async function testStep(stepCount){
-    let stepId = getStepKeyFromCount(stepCount);
-
-    let testRes = await fetch(`${window.location.href}step/${stepId}/test`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            ...getFieldsValues()
-        })
-    });
-
-    if(testRes.status !== 200){
-        console.error(testRes.statusText, testRes.status);
-    }
-
-    let jsonData = await testRes.json();
-    if(jsonData?.error){
-        setModalMessage(jsonData?.error, "error");
-    }
-    else{
-        setModalMessage("Successful test!", "success")
-        testedSteps.set(stepId, true);
-        saveTestedSteps();
-        setModalFooterHTML(stepCount);
-    }
-}
-
-async function renderNextStep(){
+async function renderNextStep() {
     setModalMessage();
     let steps = window.steps;
     let stepCount = Object.keys(steps).length - 1 ?? 0;
     let nextStepCount = Number(await getCurrentStep()) + 1;
 
-    if(nextStepCount <= stepCount){
+    if (nextStepCount <= stepCount) {
         await renderStep(nextStepCount);
     }
 }
 
-async function renderPreviousStep(){
+async function renderPreviousStep() {
     let steps = window.steps;
     let stepCount = Object.keys(steps).length - 1 ?? 0;
     let nextStepCount = Number(await getCurrentStep()) - 1;
 
-    if(nextStepCount >=  0){
+    if (nextStepCount >= 0) {
         await renderStep(nextStepCount);
     }
 }
 
-function finishSetup(){
+async function getWelcomeSteps() {
+    let prerequisites = await getPrerequisites();
+    let prereqLength = Object.keys(prerequisites).length;
 
+    let prerequsitiesContainer = document.createElement("div");
+    prerequsitiesContainer.className = "prerequisites-container";
+
+    let currentPrerequisiteStep = getCurrentPrerequisiteStep();
+    let pendingPrerequisiteChecks = new Map();
+
+    // if we have any steps
+    if (prereqLength > 0) {
+        getContentElement().innerHTML += getSubHeadingHTML("Prerequisites")
+        getContentElement().insertAdjacentElement("beforeend", prerequsitiesContainer);
+
+        // for each prerequisite
+        for (let preI = 0; preI < prereqLength; preI++) { // prerequisite index
+            const prerequisite = prerequisites[preI];
+            console.log(prerequisite)
+            const prereqId = `${preI}`;
+
+            let prerequisiteElement = document.createElement("div");
+            prerequisiteElement.className = "prerequisite";
+            prerequisiteElement.setAttribute("data-index", String(prereqId));
+
+            let isActiveStep = currentPrerequisiteStep === preI;
+            if (isActiveStep) prerequisiteElement.classList.add("active");
+
+            prerequisiteElement.innerHTML = `
+                <div class="title">
+                    <span class="icon">${preI + 1}</span>
+                    <h1>${prerequisite.title}</h1>
+                </div>
+                
+                <div class="status-container">
+                    <span class="status-icon"></span>
+                    <p class="status-text"></p>
+                </div>
+            `
+
+            prerequsitiesContainer.appendChild(prerequisiteElement)
+
+            // check if prerequisite has checks and add it to list
+            if (prerequisite?.check){
+                pendingPrerequisiteChecks.set(prereqId, [preI, prerequisite]);
+
+                await setPrerequisiteStatus(prereqId, {
+                    text: "Checking requirements",
+                    type: null,
+                    icon: "loader",
+                    ms: 1000,
+                })
+            }
+        }
+    }
+
+    // now do pending checks
+    // im really proud of this one here
+    if(pendingPrerequisiteChecks.size > 0){
+        for(let map of [...pendingPrerequisiteChecks]){
+            let prereqId = map[0];
+            let values = map[1];
+            
+            let preI = values[0];
+            let prerequisite = values[1];
+
+            let checkResult = await checkPrerequisite(preI)
+            // if response error
+            if(checkResult?.error){
+                await setPrerequisiteStatus(prereqId, {
+                    text: checkResult.error,
+                    type: "error",
+                    icon: "error",
+                })
+            }
+            else{
+                // if response ok...
+                // if no command error and successful
+                if(!checkResult?.results?.stderr && checkResult?.results?.success === true){
+                    await setPrerequisiteStatus(prereqId, {
+                        text: "Installed",
+                        type: "success",
+                        icon: "check",
+                    })
+
+                    await launchPrereq(prereqId);
+                }
+                // if command error
+                else if(checkResult?.results?.stderr){
+                    if(prerequisite?.install){
+                        await installPrereq(prereqId)
+                    }
+                    else{
+                        await setPrerequisiteStatus(prereqId, {
+                            text: "Not installed",
+                            type: "error",
+                            icon: "x",
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    async function installPrereq(prereqId){
+        await setPrerequisiteStatus(prereqId, {
+            text: "Installing...",
+            type: null,
+            icon: "loader",
+            ms: 1000
+        })
+
+        // check if there is a install instruction
+        let installResult = await installPrerequisite(prereqId)
+        if(installResult?.error || installResult?.results?.success === false){
+            await setPrerequisiteStatus(prereqId, {
+                text: "Error during install",
+                type: "error",
+                icon: "x",
+            })
+        }
+        else if(installResult?.results?.success === true){
+            await setPrerequisiteStatus(prereqId, {
+                text: "Installed",
+                type: "success",
+                icon: "check",
+            })
+
+            await launchPrereq(prereqId);
+        }
+    }
+
+    async function launchPrereq(prereqId){
+        await setPrerequisiteStatus(prereqId, {
+            text: "Launching...",
+            type: null,
+            icon: "loader",
+            ms: 1000
+        })
+
+        let executeResult = await executePrerequisite(prereqId);
+        if(executeResult?.error){
+            await setPrerequisiteStatus(prereqId, {
+                text: "Startup Error",
+                type: "error",
+                icon: "x",
+            })
+        }
+        else{
+            await setPrerequisiteStatus(prereqId, {
+                text: "Running",
+                type: "success",
+                icon: "check",
+            })
+        }
+    }
 }
+
