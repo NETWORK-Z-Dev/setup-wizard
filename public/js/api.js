@@ -95,7 +95,17 @@ async function finishSetup() {
         return setModalMessage("Failed to finish setup", "error")
     }
 
-    setModalMessage("You can now close this page!", "success")
+    let data = await stepsRes.json();
+
+    if(data?.redirectUrl){
+        setModalMessage("You will'll be automatically redirected!", "success")
+        setTimeout(() => {
+            window.location.href = data.redirectUrl;
+        }, 4000)
+    }
+    else{
+        setModalMessage("You can now close this page!", "success")
+    }
 }
 
 async function getPrerequisites() {

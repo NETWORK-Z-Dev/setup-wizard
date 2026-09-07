@@ -11,15 +11,15 @@ import fs from "node:fs";
 
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = path.dirname(__filename);
-
 export default class SetupWizard {
     constructor({
         onCompleted = null,
         debug = false,
         title = "Setup Wizard",
         subtitle = "Easy Web Installer",
+        redirectUrl = null
     } = {}){
-        this.webEndpointId = "test" ?? crypto.randomUUID();
+        this.webEndpointId = crypto.randomUUID();
         this.starter = new ExpressStarter()
         this.starter.registerErrorHandlers(); // avoid crashing and enable error logging
         
@@ -39,6 +39,7 @@ export default class SetupWizard {
         this.debug = debug;
         this.app = this.starter.app;
         this.express = this.starter.express;
+        this.redirectUrl = redirectUrl
 
         Logger.logDebug = debug;
 
@@ -150,12 +151,12 @@ export default class SetupWizard {
                 let {success, stdout, stderr, code} = await this.runCommand(command);
                 if(stderr?.trim() === "") stderr = null;
 
-                const isWorking = success === true && !stderr;
+                const isWorking = success === true && code === 0;
 
                 testResults = {
                     success: !!isWorking,
                     stdout,
-                    stderr: isWorking ? null : stderr,
+                    stderr: stderr ?? null,
                     code
                 }
 
@@ -191,12 +192,12 @@ export default class SetupWizard {
                 let {success, stdout, stderr, code} = await this.runCommand(command);
                 if(stderr?.trim() === "") stderr = null;
 
-                const isWorking = success === true && !stderr;
+                const isWorking = success === true && code === 0;
 
                 testResults = {
                     success: !!isWorking,
                     stdout,
-                    stderr: isWorking ? null : stderr,
+                    stderr: stderr ?? null,
                     code
                 }
 
@@ -275,7 +276,7 @@ export default class SetupWizard {
 
         this.app.get(`/wizard/${this.webEndpointId}/finish`, this.express.json(), async(req, res, next) => {
             if(this.onCompleted && typeof this.onCompleted === "function") await this.onCompleted();
-            res.status(200).json({ error: null})
+            res.status(200).json({ error: null, redirectUrl: this.redirectUrl})
             await this.exitSetup();
         })
         
@@ -287,7 +288,7 @@ export default class SetupWizard {
         );
 
         Logger.success("Setup Page is available at:")
-        Logger.success(`http://localhost:${this.starter.server.address().port}/wizard/${this.webEndpointId}`)
+        Logger.success(`http://localhost:${this.starter.server.address().port}/wizard/${this.webEndpointId}/`)
         Logger.warn("Copy the url to continue the setup process.")
     }
 
