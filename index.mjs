@@ -13,16 +13,16 @@ export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = path.dirname(__filename);
 export default class SetupWizard {
     constructor({
-        onCompleted = null,
-        debug = false,
-        title = "Setup Wizard",
-        subtitle = "Easy Web Installer",
-        redirectUrl = null
-    } = {}){
+                    onCompleted = null,
+                    debug = false,
+                    title = "Setup Wizard",
+                    subtitle = "Easy Web Installer",
+                    redirectUrl = null
+                } = {}){
         this.webEndpointId = crypto.randomUUID();
         this.starter = new ExpressStarter()
         this.starter.registerErrorHandlers(); // avoid crashing and enable error logging
-        
+
         this.starter.registerTemplateMiddleware({
             publicWebDir: path.join(__dirname, "public"),
             urlPrefix: `/wizard/${this.webEndpointId}`,
@@ -33,8 +33,6 @@ export default class SetupWizard {
                 ]
             }
         }); // cool template engine
-        
-        this.starter.startHttpServer(5000) // begin listening on whatever port
 
         this.debug = debug;
         this.app = this.starter.app;
@@ -51,9 +49,14 @@ export default class SetupWizard {
 
         // callbacks
         this.onCompleted = onCompleted
-
-        this.registerWebEndpoint();
         this.installLibs();
+
+        this.starter.startHttpServer(5000, () => {
+            this.registerWebEndpoint();
+            Logger.success("Setup Page is available at:")
+            Logger.success(`http://localhost:${this.starter.server.address().port}/wizard/${this.webEndpointId}/`)
+            Logger.warn("Copy the url to continue the setup process.")
+        })
     }
 
     async exitSetup() {
@@ -77,7 +80,7 @@ export default class SetupWizard {
     async installLibs(){
         try{
             let libDir = path.join(__dirname, "public", "js", "libs");
-            
+
             const results = await FrontendLibs.installMultiple([
                 { package: '@hackthedev/icons@latest', path: libDir },
                 { package: '@hackthedev/element-loader@latest', path: libDir },
@@ -279,17 +282,13 @@ export default class SetupWizard {
             res.status(200).json({ error: null, redirectUrl: this.redirectUrl})
             await this.exitSetup();
         })
-        
+
         this.app.use(
             `/wizard/${this.webEndpointId}`,
             this.express.static(
                 path.join(__dirname, "public")
             )
         );
-
-        Logger.success("Setup Page is available at:")
-        Logger.success(`http://localhost:${this.starter.server.address().port}/wizard/${this.webEndpointId}/`)
-        Logger.warn("Copy the url to continue the setup process.")
     }
 
     runCommand(command) {
