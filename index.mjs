@@ -57,6 +57,9 @@ export default class SetupWizard {
             Logger.success(`http://localhost:${this.starter.server.address().port}/wizard/${this.webEndpointId}/`)
             Logger.warn("Copy the url to continue the setup process.")
         })
+
+        this.customJsDir = path.join(__dirname, "public", "js", "custom");
+        if(!fs.existsSync(this.customJsDir)) fs.mkdirSync(this.customJsDir);
     }
 
     async exitSetup() {
@@ -108,11 +111,11 @@ export default class SetupWizard {
     addStep(step = {}){
         if(!step?.id) throw new Error("Missing step identifier (id)");
         if(!step?.title) throw new Error("Missing Step title");
-        if(!step?.description) Logger.warn(`Step ${step?.id} is missing a description. Its recommended!`)
+        if(!step?.description) Logger.debug(`Step ${step?.id} is missing a description. Its recommended!`)
 
         // avoid duplicates
         if(this.steps.has(step.id)){
-            return Logger.warn(`Step ${step.id} already exists! Skipped...`)
+            return Logger.debug(`Step ${step.id} already exists! Skipped...`)
         }
 
         this.steps.set(step.id, step)
@@ -282,6 +285,27 @@ export default class SetupWizard {
             res.status(200).json({ error: null, redirectUrl: this.redirectUrl})
             await this.exitSetup();
         })
+
+        this.app.get(`/wizard/${this.webEndpointId}/js/custom`, async (req, res) => {
+            try {
+                const files = await fs.promises.readdir(this.customJsDir);
+
+                const jsFiles = files
+                    .filter(file => file.endsWith(".js"))
+                    .map(file => `/wizard/${this.webEndpointId}/js/custom/${file}`);
+
+                res.status(200).json({
+                    files: jsFiles
+                });
+            }
+            catch (exc) {
+                Logger.error(exc);
+
+                res.status(500).json({
+                    error: "Failed to load custom JS files"
+                });
+            }
+        });
 
         this.app.use(
             `/wizard/${this.webEndpointId}`,

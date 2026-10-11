@@ -1,6 +1,7 @@
 let testedSteps = new Map();
 
 document.addEventListener("DOMContentLoaded", async () => {
+    loadCustomScripts();
     testedSteps = loadTestedSteps();
 }, {once: true})
 
@@ -119,6 +120,12 @@ async function setFieldsElement(step) {
 
     let stepHeadings = step?.title ? getStepHeadings(step.title, step.subtitle, step.description) : "";
 
+    // we need to get existing values so they dont reset after clicking "test" etc
+    let currentInputValues = new Map(
+        [...document.querySelectorAll("div.content input")]
+            .map(input => [input.id, input.value])
+    );
+
     getContentElement().innerHTML = `${stepHeadings}`;
 
     let fieldsContainer = document.createElement("div");
@@ -143,7 +150,7 @@ async function setFieldsElement(step) {
             type="${isSensitive ? "password" : inputType ? inputType : "text"}" 
             id="${field.id}" 
             placeholder="${field?.placeholder ?? ""}" 
-            value="${field?.value ?? ""}">
+            value="${currentInputValues.get(field.id) ?? field?.value ?? ""}">
         `
 
         fieldsContainer.insertAdjacentElement("beforeend", fieldElement);
@@ -379,3 +386,16 @@ async function getWelcomeSteps() {
     }
 }
 
+async function loadCustomScripts() {
+    const response = await fetch(`${window.location.href}js/custom`);
+    const data = await response.json();
+
+    for (const file of data.files) {
+        const script = document.createElement("script");
+
+        script.src = file;
+        script.async = true;
+
+        document.body.appendChild(script);
+    }
+}

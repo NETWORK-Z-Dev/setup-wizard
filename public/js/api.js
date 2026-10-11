@@ -73,14 +73,24 @@ async function testStep(stepCount) {
         console.error(testRes.statusText, testRes.status);
     }
 
-    let jsonData = await testRes.json();
-    if (jsonData?.error) {
-        setModalMessage(jsonData?.error, "error");
-    } else {
+    let jsonData = null;
+    try{
+        jsonData = await testRes.json();
+
         testedSteps.set(stepId, true);
         saveTestedSteps();
         await setStepProgressElement()
         setModalMessage("Successful test!", "success")
+    }
+    catch(err){
+        console.error(err);
+
+        if (jsonData?.error) {
+            setModalMessage(jsonData?.error, "error");
+        }
+        else{
+            setModalMessage("Something went wrong during the test :/", "error");
+        }
     }
 }
 

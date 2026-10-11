@@ -20,6 +20,8 @@ function getFooterElement(){
 
 function setModalMessage(text = null, type = "info"){
     let modalElement = getProgressElement().querySelector("span.message");
+    modalElement.className = "message";
+
     if(text){
         modalElement.style.display = "flex";
         modalElement.innerHTML = text;
